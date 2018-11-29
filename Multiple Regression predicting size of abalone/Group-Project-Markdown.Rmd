@@ -1,0 +1,89 @@
+---
+title: "Group Project"
+author: 'SID: 450401242'
+date: "18/10/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+abal <- read.csv(file="abalone.csv")
+library(GGally)
+library(tidyverse)
+ggpairs(abal)
+glimpse(abal)
+newAbal <- abal[order(-abal$height),]
+#removing height outlier
+newAbal = newAbal[-1,]
+abal <- newAbal
+
+```
+
+Assumptions for MLR:
+
+    1. Linearity: All predictor variables have an approximate linear relationship with the response variable
+    
+    2. Homoskedasticity: The errors have constant variance --> needs to be assessed after model is built
+    
+    3. Independence: No actual information is given in regard to how this data was collected i.e. whether or not they were collected on different days at different locations etc. However, as this data has previously been used for building predictive models, we will operate under the assumption that the data is IID
+    
+    4. Normality: The errors follow a normal distribution - This will need to be assessed after a model is fitted using a QQ plot
+    
+    5. No perfect collinearity: As is to be expected, all the different weight measurements have a very strong correlation with eachother, over 0.955 for all. On top of this all the variables except for Sex and Rings have an extremely strong correlation with eachother, as they relate to similar physical attributes - the larger the diameter the larger the height that can be expected and the heavier it can be expected to be. This assumption is not very well satisfied at all, for our purposes we will only include the weight measurement that has the strongest correlation and drop the others.
+
+
+Notes:
+
+    - There appears to be 2 outliers for the height variable with apparent height up to 5x as much as the others - see below
+    
+    
+```{r}
+p1 = ggplot(abal, aes(x = Height,
+                          y = Rings)) +
+  geom_point(size = 3) +
+  theme_classic(base_size = 30) +
+  labs(y = "Rings",
+       x = "Height") +
+  geom_smooth(method = "lm", se = FALSE)
+p1
+```
+
+```{r}
+library(tidyverse)
+library(ggfortify)
+library(GGally)
+abalone = abal
+glimpse(abalone)
+
+summary(abalone)
+
+#plot(data)
+ggpairs(abalone)
+
+model1_full = lm(rings ~ ., data = abalone)
+summary(model1_full)
+
+drop1(model1_full)
+
+model2 <- update(model1_full, . ~ . -shuckled_weight)
+summary(model2)
+drop1(model2)
+
+data_step = step(model1_full, direction = "backward", trace = T)
+#Multiple Linear Regression generated using step-wise method
+summary(data_step)
+
+#Multiple Linear Regression using
+library(leaps)
+regsubset.out = regsubsets(rings ~ ., data = abalone, method = "exhaustive")
+sum = summary(regsubset.out)
+
+plot(sum$rsq, xlab = "num variables", ylab = "R square", type = "b")
+
+plot(sum$cp, xlab = "num variables", ylab = "cp", type = "b")
+
+sum
+
+
+```
+
+

@@ -1,0 +1,458 @@
+---
+title: "Group Project"
+author: 'SID: 450401242'
+date: "18/10/2018"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+abal <- read.csv(file="https://raw.github.sydney.edu.au/hlin4599/DATA2002-Assignment/master/abalone.csv?token=AAAG14_yU_uXZ2stJODFUYb_F56BCGUVks5b2Zi7wA%3D%3D")
+library(GGally)
+library(tidyverse)
+library(dplyr)
+require(plyr)
+#install.packages("pairsD3")
+#install_github("easyGgplot2", "kassambara")
+#ggpairs(abal)
+#glimpse(abal)
+#shinypairs(abal)
+
+#removing height outlier
+colnames(abal)
+abal = filter(abal, height != 0, height < 0.5)
+abal = abal %>% mutate_at(.vars = vars(height), .funs = funs(ifelse(. == 0, NA, .))) %>% drop_na()
+abal$rings = log(abal$rings)
+
+#abalLog = select_if(abal, is.numeric)
+#taking the log of the numeric data
+#log(abalLog)
+#adding sex category, might be out of order?
+#abalLog$sex = abal$sex
+#abal = abalLog
+
+#summary(abal)
+
+
+
+```
+
+    
+```{r}
+require(ggplot2)
+require(GGally)
+
+#custom ggpairs graph
+pm <- ggpairs(
+ abal,
+ mapping = ggplot2::aes(colour = sex),
+ upper = list(continuous = wrap("density", alpha = 1), combo = "box"),
+ lower = list(continuous = wrap("points" , size = 1, alpha = 1), 
+              combo = wrap("dot", alpha = 0.4,size=0.2) ),
+ title = "Rings"
+)
+#Making scatter plots, pulling them out of ggpairs
+
+col = 9
+pm[col,1]
+pm[col,2]
+pm[col,3]
+pm[col,4]
+pm[col,5]
+pm[col,6]
+pm[col,7]
+pm
+
+
+```
+
+```{r}
+library(tidyverse)
+library(ggfortify)
+library(GGally)
+require(ggplot2)
+require(caret)
+abalone = abal
+glimpse(abalone)
+
+summary(abalone)
+
+#simple linear model
+model0_full = lm(rings ~ height, data = abalone)
+summary(model0_full)
+
+cv_model0 = train(
+  rings ~ height, abal,
+  method = "lm",
+  trControl = trainControl(
+    method = "cv", number = 10,
+    verboseIter = FALSE
+  )
+)
+
+cv_model0
+
+#all predictors
+cv_model1 = train(
+  rings ~ ., abal,
+  method = "lm",
+  trControl = trainControl(
+    method = "cv", number = 10,
+    verboseIter = FALSE
+  )
+)
+cv_model1
+
+#plotting correlations of all variables
+
+#multiple linear regression on all variables available
+model1_full = lm(rings ~ ., data = abal)
+
+#checking if any variables can be dropped using backwards stepwise method
+data_back = step(model1_full, direction = "backward", trace = T)
+summary(data_back)
+autoplot(data_back, which = 1:2) + theme_bw()
+data_back
+
+cv_model1 = train(
+  rings ~ sex + diameter + height + whole_weight + 
+    shuckled_weight + viscera_weight + shell_weight, data = abal,
+  method = "lm",
+  trControl = trainControl(
+    method = "cv", number = 10,
+    verboseIter = FALSE
+  )
+)
+cv_model1
+
+
+
+#tried using the forwards and both direction stepwise method to drop variables, they didnt change the result significantly
+
+#data_forward = step(model1_full, direction = "forward", trace = T)
+#Multiple Linear Regression generated using forward step-wise method
+#summary(data_forward)
+#autoplot(data_forward, which = 1:2) + theme_bw()
+
+#data_both = step(model1_full, direction = "both", trace = T)
+#Multiple Linear Regression generated using step-wise method
+#summary(data_both)
+#autoplot(data_both, which = 1:2) + theme_bw()
+
+
+#Multiple Linear Regression using an exhaustive search
+library(leaps)
+regsubset.out = regsubsets(rings ~ ., data = abalone, method = "exhaustive")
+exhaustive_sum = summary(regsubset.out)
+exhaustive = regsubset.out
+
+plot(exhaustive_sum$rsq, xlab = "num variables", ylab = "R square", type = "b", main = "R Squared")
+plot(exhaustive_sum$adjr2, xlab = "num variables", ylab = "adjusted r squared", type = "b", main = "Adjusted Rsquared ")
+plot(exhaustive_sum$cp, xlab = "num variables", ylab = "complexity param", type = "b", main = "Complexity parameter")
+plot(exhaustive_sum$bic, xlab = "num variables", ylab = "bic", type = "b", main = "BIC")
+
+
+exhaustive_sum
+
+library(caret)
+cv_full = train(
+  rings ~ sex + diameter + height + whole_weight + shuckled_weight + viscera_weight + shell_weight, abalone,
+  method = "lm",
+  trControl = trainControl(
+    method = "cv", number = 10,
+    verboseIter = FALSE
+  )
+)
+cv_full
+
+ex_model = (cv_full$finalModel)
+autoplot(ex_model, which = 1:2)
+
+colnames(abalone)
+model2 = lm(rings ~ sex + length + diameter + height + shuckled_weight , data = abalone)
+summary(model2)
+
+
+#plotting the exhaustive model and the back stepwise model over each other, they're exactly the same... exhaustive model is red and dashed so you can see the blue line underneath
+
+
+
+# suddenly not working?
+#testPlot = pm[col,6]
+
+#testPlot + geom_line(mapping = data_back)
+
+
+colnames(abal)
+#box = abal[,c("rings")] <- NULL
+boxplot(abal, horizontal = TRUE, las = 1)
+
+summary(ex_model)
+cv_full
+
+#confusionMatrix(ex_model, abal)
+
+
+#Test performance other than cross validation???
+#plot results???
+#can we make the model better
+
+# read dataset
+df = mtcars
+
+
+require(ggplot2)
+require(reshape2)
+abal2 = melt(abal, id.vars='rings')
+ggplot(abal2) +
+  geom_jitter(aes(value,rings, colour=variable)) + geom_smooth(aes(value,rings, colour="black"), method=lm, se=FALSE) +
+  facet_wrap(~variable, scales="free_x") +
+  labs(x = "Percentage cover (%)", y = "Number of individuals (N)")
+
+ggplot(abal, aes(x = sex, y = rings)) + geom_point() + geom_smooth(method = lm, formula = data_back)
+
+final <- lm(rings ~ diameter + height + whole_weight + shuckled_weight + viscera_weight + shell_weight, abal)
+
+lm.mod<-function(df){
+  p = lm(rings ~ sex + diameter, abal)
+return(p) 
+}
+
+colnames(abal)
+
+ggplot(abal, aes(x = diameter, y = rings)) + geom_point() + geom_smooth(, method = lm) 
+ggplot(abal, aes(x = abal$whole_weight, y = rings)) + geom_point() + geom_smooth(, method = lm) 
+ggplot(abal, aes(x = shuckled_weight, y = rings)) + geom_point() + geom_smooth(, method = lm)
+ggplot(abal, aes(x = viscera_weight, y = rings)) + geom_point() + geom_smooth(, method = lm)
+
+ggplotRegression <- function (fit) {
+
+require(ggplot2)
+
+ggplot(fit$model, aes_string(x = names(fit$model)[2], y = names(fit$model)[1])) + 
+  geom_point() +
+  stat_smooth(method = "lm", col = "red") +
+  labs(title = paste("Adj R2 = ",signif(summary(fit)$adj.r.squared, 5),
+                     "Intercept =",signif(fit$coef[[1]],5 ),
+                     " Slope =",signif(fit$coef[[2]], 5),
+                     " P =",signif(summary(fit)$coef[2,4], 5)))
+}
+
+ggplotRegression(lm(rings ~ shuckled_weight + diameter + whole_weight + height  + viscera_weight + shell_weight, abal))
+
+
+library(ggplot2)
+theme_set(theme_classic())
+
+m2 = lm(rings ~ whole_weight + length, data=abal)
+
+pred.data = expand.grid(whole_weight = seq(min(abal$whole_weight), max(abal$whole_weight), length=5),length = quantile(abal$length))
+
+pred.data$rings = predict(m2, newdata=pred.data)
+
+ggplot(pred.data, aes(whole_weight, rings, colour=factor(length))) +
+  geom_line() +
+  labs(colour="height Quantiles") +
+  labs(title = "rings ~ whole_weight + height")
+
+library(caret)
+
+control <- trainControl(method = "repeatedcv", 
+                        number = 10, 
+                        repeats = 6)
+
+formula = rings ~ sex + diameter + height + whole_weight + 
+    shuckled_weight + viscera_weight + shell_weight
+
+model_lm <- train(formula, data = abal, method='lm',
+                  trControl = control, tuneLength = 10)
+
+
+#plot height
+pred <- predict(model_lm, abal)
+pred <- data.frame(pred = pred, height = abal$height)
+
+library(reshape2)
+
+
+heightplot <- ggplot(data = pred)+
+  geom_point(aes(x = height, y = pred, colour = "Predicted Rings"), alpha = 0.3) +
+  geom_point(data = abal, aes(x=height, y = rings, colour = "Observed Rings"), alpha = 0.3) +
+  xlab("Height") +
+  ylab("Number of Rings") +
+  labs(title = "Comparing MLR by Height") +
+  theme_dark()
+
+
+
+#plot diameter
+
+pred <- predict(model_lm, abal)
+pred <- data.frame(pred = pred, diameter = abal$diameter)
+
+diameterplot <- ggplot(data = pred)+
+  geom_point(aes(x = diameter, y = pred, colour = "Predicted Rings"), alpha = 0.3) +
+  geom_point(data = abal, aes(x=diameter, y = rings, colour = "Observed Rings"), alpha = 0.3) +
+  xlab("Diameter") +
+  ylab("Number of Rings") +
+  labs(title = "Comparing MLR by diameter") +
+  theme_dark()
+
+#plot sex??
+
+pred <- predict(model_lm, abal)
+pred <- data.frame(pred = pred, sex = abal$sex)
+library(cowplot)
+
+sexplot1 <- ggplot(data = pred)+
+  geom_boxplot(aes(x = sex, y = pred, colour = "Predicted Rings"), alpha = 0.3) +
+  xlab("Sex") +
+  ylab("Number of Rings") +
+  labs(title = "Comparing MLR by sex") +
+  theme_dark()
+
+sexplot2 <- ggplot(data = pred)+
+  geom_boxplot(data = abal, aes(x=sex, y = rings, colour = "Observed Rings"), alpha = 0.3) +
+  xlab("Sex") +
+  ylab("Number of Rings") +
+  theme_dark()
+
+sexplot3 <- plot_grid(sexplot1,sexplot2)
+
+#plot whole weight
+
+pred <- predict(model_lm, abal)
+pred <- data.frame(pred = pred, whole_weight = abal$whole_weight)
+
+wholeweightPlot <- ggplot(data = pred)+
+  geom_point(aes(x = whole_weight, y = pred, colour = "Predicted Rings"), alpha = 0.3) +
+  geom_point(data = abal, aes(x=whole_weight, y = rings, colour = "Observed Rings"), alpha = 0.3) +
+  xlab("Whole Weight") +
+  ylab("Number of Rings") +
+  labs(title = "Comparing MLR by Whole Weight") +
+  theme_dark()
+
+wholeweightPlot
+
+#plot shuck weight
+
+pred <- predict(model_lm, abal)
+pred <- data.frame(pred = pred, shuckled_weight = abal$shuckled_weight)
+
+shuckWeightPlot <- ggplot(data = pred)+
+  geom_point(aes(x = shuckled_weight, y = pred, colour = "Predicted Rings"), alpha = 0.3) +
+  geom_point(data = abal, aes(x=shuckled_weight, y = rings, colour = "Observed Rings"), alpha = 0.3) +
+  xlab("Shuckled Weight") +
+  ylab("Number of Rings") +
+  labs(title = "Comparing MLR by Shuckled Weight") +
+  theme_dark()
+
+shuckWeightPlot
+
+#plot viscera weight
+
+pred <- predict(model_lm, abal)
+pred <- data.frame(pred = pred, viscera_weight = abal$viscera_weight)
+
+visceraWeightPlot <- ggplot(data = pred)+
+  geom_point(aes(x = viscera_weight, y = pred, colour = "Predicted Rings"), alpha = 0.3) +
+  geom_point(data = abal, aes(x=viscera_weight, y = rings, colour = "Observed Rings"), alpha = 0.3) +
+  xlab("Viscera Weight") +
+  ylab("Number of Rings") +
+  labs(title = "Comparing MLR by Viscera Weight") +
+  theme_dark()
+
+
+
+#plot shell weight
+
+pred <- predict(model_lm, abal)
+pred <- data.frame(pred = pred, shell_weight = abal$shell_weight)
+
+shellWeightPlot <- ggplot(data = pred)+
+  geom_point(aes(x = shell_weight, y = pred, colour = "Predicted Rings"), alpha = 0.3) +
+  theme(legend.position="none") +
+  geom_point(data = abal, aes(x=shell_weight, y = rings, colour = "Observed Rings"), alpha = 0.3) +
+  theme(legend.position="none") +
+  xlab("Shell Weight") +
+  ylab("Number of Rings") +
+  labs(title = "Comparing MLR by Shell Weight") +
+  theme_dark()
+
+
+
+shellWeightPlot
+visceraWeightPlot
+shuckWeightPlot
+wholeweightPlot
+diameterplot
+heightplot
+sexplot3
+
+  
+
+
+```
+
+Constructing the model.
+The data set had already been normalised by dividing all values by 200 but there were still some outliers and 0 values that we needed to remove. Obviously it doesn't make sense for an animal to have a height of 0 mm.
+
+We then assessed the accuracy of a simple single linear regression model and the accuracy of a model that included all the terms.
+
+We suspected we could find a better fit for the data so we used a back and forward stepwise method.
+
+We also used an exhaustive search.
+
+Notably all three methods returned the same model, which included all terms in the data set except for the length column.
+
+-- Compare R squared, adjusted R squared and MAE
+
+```{r}
+#final full model
+summary(ex_model)
+cv_full
+
+shellWeightPlot
+visceraWeightPlot
+shuckWeightPlot
+wholeweightPlot
+diameterplot
+heightplot
+sexplot3
+
+#Multiple Linear Regression using an exhaustive search
+library(leaps)
+abalone2 = abalone %>% select(rings, height,whole_weight,diameter,length,sex)
+
+
+regsubset.out2 = regsubsets(rings ~ ., data = abalone2, method = "exhaustive")
+exhaustive_sum2 = summary(regsubset.out2)
+exhaustive2 = regsubset.out
+
+plot(exhaustive_sum2$rsq, xlab = "num variables", ylab = "R square", type = "b", main = "R Squared")
+plot(exhaustive_sum2$adjr2, xlab = "num variables", ylab = "adjusted r squared", type = "b", main = "Adjusted Rsquared ")
+plot(exhaustive_sum2$cp, xlab = "num variables", ylab = "complexity param", type = "b", main = "Complexity parameter")
+plot(exhaustive_sum2$bic, xlab = "num variables", ylab = "bic", type = "b", main = "BIC")
+
+exhaustive_sum2
+
+library(caret)
+cv_full = train(
+  rings ~ sex + diameter + height + length + whole_weight, abalone2,
+  method = "lm",
+  trControl = trainControl(
+    method = "cv", number = 10,
+    verboseIter = FALSE
+  )
+)
+summary(cv_full$finalModel)
+
+
+
+```
+
+
+
+
+

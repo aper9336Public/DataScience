@@ -1,0 +1,119 @@
+---
+title: "Untitled"
+author: '480529950'
+date: "10/21/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+```{r}
+library(tidyverse)
+abalone <- read.csv("abalone.csv")
+abalone <- abalone %>% mutate(
+  sex = case_when(sex == "M" ~ 2,
+                  sex == "F" ~ 1,
+                  sex == "I" ~ 0
+                  )
+  
+)
+```
+
+```{r}
+cor_mat <- cor(abalone)
+melted_cor_mat <- cor_mat %>%
+  data.frame() %>% 
+  rownames_to_column(var = "var1") %>% 
+  gather(key = "var2", value = "cor", -var1)
+```
+
+```{r}
+ggplot(data = melted_cor_mat, 
+       aes(x=var1, y=var2, fill=cor)) + 
+  geom_tile() + theme_minimal(base_size = 10) +
+  scale_fill_gradient2(
+    low = "blue", high = "red", mid = "white", 
+    midpoint = 0, limit = c(-1,1)) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+
+
+```{r}
+
+```
+
+```{r}
+require(datasets)
+#data("abalone")
+require(GGally)
+require(ggplot2)
+
+my_fn <- function(data, mapping, ...){
+  p <- ggplot(data = data, mapping = mapping) + 
+    geom_point() + 
+    geom_smooth(method=loess, fill="light green", color="light green", ...) +
+    geom_smooth(method=lm, fill="light blue", color="light blue", ...)
+  p
+}
+
+g = ggpairs(abalone, lower = list(continuous = my_fn))+theme_bw(base_size = 9)
+g
+```
+
+
+```{r}
+length_scatter = ggplot(abalone, aes(x = length, y = rings)) + 
+    geom_point() + theme_bw()
+## Adding a regression line
+length_lm = length_scatter + geom_smooth(method = "lm", se = FALSE)
+## Adding a different line with intercept being zero
+length_lm2 = length_lm + geom_smooth(method = "lm", formula = y ~ 
+    -1 + x, col = "red", se = FALSE)
+
+diameter_scatter = ggplot(abalone, aes(x = diameter, y = rings)) + 
+    geom_point() + theme_bw()
+## Adding a regression line
+diameter_lm = diameter_scatter + geom_smooth(method = "lm", se = FALSE)
+## Adding a different line with intercept being zero
+diameter_lm2 = diameter_lm + geom_smooth(method = "lm", formula = y ~ 
+    -1 + x, col = "red", se = FALSE)
+
+height_scatter = ggplot(abalone, aes(x = height, y = rings)) + 
+    geom_point() + theme_bw()
+## Adding a regression line
+height_lm = height_scatter + geom_smooth(method = "lm", se = FALSE)
+## Adding a different line with intercept being zero
+height_lm2 = height_lm + geom_smooth(method = "lm", formula = y ~ 
+    -1 + x, col = "red", se = FALSE)
+
+sex_scatter = ggplot(abalone, aes(x = sex, y = rings)) + 
+    geom_point() + theme_bw()
+## Adding a regression line
+sex_lm = sex_scatter + geom_smooth(method = "lm", se = FALSE)
+## Adding a different line with intercept being zero
+sex_lm2 = sex_lm + geom_smooth(method = "lm", formula = y ~ 
+    -1 + x, col = "red", se = FALSE)
+
+gridExtra::grid.arrange( length_lm2, diameter_lm2, height_lm2, sex_lm2, ncol = 2)
+```
+
+
+
+```{r}
+library(tidyverse)
+abalone1 <- read.csv("abalone.csv")
+require(GGally)
+ggpairs(abalone1, mapping=ggplot2::aes(colour = sex, alpha = 0.3, params = list(corSize = 2))) +theme_bw(base_size = 9)
+```
+
+
+
+
+
+
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

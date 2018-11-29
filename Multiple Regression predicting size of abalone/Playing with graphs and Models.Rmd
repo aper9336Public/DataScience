@@ -1,0 +1,132 @@
+---
+title: "Group Project"
+author: 'SID: 450401242'
+date: "18/10/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+abal <- read.csv(file="abalone.csv")
+library(GGally)
+library(tidyverse)
+library(dplyr)
+require(plyr)
+library(devtools)
+#install_github("easyGgplot2", "kassambara")
+ggpairs(abal)
+glimpse(abal)
+
+#removing height outlier
+abal = filter(abal, height != 0, height < 0.5)
+abalLog = select_if(abal, is.numeric)
+#taking the log of the numeric data
+log(abalLog)
+#adding sex category, might be out of order?
+abalLog$sex = abal$sex
+abal = abalLog
+
+
+
+```
+
+    
+```{r}
+require(ggplot2)
+require(GGally)
+
+#custom ggpairs graph
+pm <- ggpairs(
+ abal,
+ mapping = ggplot2::aes(),
+ upper = list(continuous = wrap("density", alpha = 1), combo = "box"),
+ lower = list(continuous = wrap("points" , size = 1, alpha = 1), 
+              combo = wrap("dot", alpha = 0.4,size=0.2) ),
+ title = "Rings"
+)
+#Making scatter plots, pulling them out of ggpairs
+col = 8
+pm[col,1]
+pm[col,2]
+pm[col,3]
+pm[col,4]
+pm[col,5]
+pm[col,6]
+pm[col,7]
+#pm
+
+
+```
+
+```{r}
+library(tidyverse)
+library(ggfortify)
+library(GGally)
+abalone = abal
+glimpse(abalone)
+
+summary(abalone)
+
+#plotting correlations of all variables
+ggpairs(abalone, mapping=ggplot2::aes(colour = sex, alpha = 0.3)) +theme_bw(base_size = 3)
+
+#multiple linear regression on all variables available
+model1_full = lm(rings ~ ., data = abalone)
+
+#checking if any variables can be dropped using backwards stepwise method
+data_back = step(model1_full, direction = "backward", trace = T)
+summary(data_back)
+autoplot(data_back, which = 1:2) + theme_bw()
+
+#tried using the forwards and both direction stepwise method to drop variables, they didnt change the result significantly
+
+#data_forward = step(model1_full, direction = "forward", trace = T)
+#Multiple Linear Regression generated using forward step-wise method
+#summary(data_forward)
+#autoplot(data_forward, which = 1:2) + theme_bw()
+
+#data_both = step(model1_full, direction = "both", trace = T)
+#Multiple Linear Regression generated using step-wise method
+#summary(data_both)
+#autoplot(data_both, which = 1:2) + theme_bw()
+
+
+#Multiple Linear Regression using an exhaustive search
+library(leaps)
+regsubset.out = regsubsets(rings ~ ., data = abalone, method = "exhaustive")
+exhaustive_sum = summary(regsubset.out)
+exhaustive = regsubset.out
+
+plot(exhaustive_sum$rsq, xlab = "num variables", ylab = "R square", type = "b", main = "R Squared")
+
+plot(exhaustive_sum$cp, xlab = "num variables", ylab = "cp", type = "b", main = "Complexity parameter")
+
+exhaustive_sum
+
+library(caret)
+cv_full = train(
+  rings ~ sex + diameter + height + whole_weight + shuckled_weight + viscera_weight + shell_weight, abalone,
+  method = "lm",
+  trControl = trainControl(
+    method = "cv", number = 10,
+    verboseIter = FALSE
+  )
+)
+
+ex_model = (cv_full$finalModel)
+#plotting the exhaustive model and the back stepwise model over each other, they're exactly the same... exhaustive model is red and dashed so you can see the blue line underneath
+
+pm[col,1] + geom_smooth(model = data_back) + geom_smooth(model = ex_model, colour = "red" , linetype = "dashed")
+pm[col,2] + geom_smooth(model = data_back) + geom_smooth(model = ex_model, colour = "red" , linetype = "dashed")
+pm[col,3] + geom_smooth(model = data_back) + geom_smooth(model = ex_model, colour = "red" , linetype = "dashed")
+pm[col,4] + geom_smooth(model = data_back) + geom_smooth(model = ex_model, colour = "red" , linetype = "dashed")
+pm[col,5] + geom_smooth(model = data_back) + geom_smooth(model = ex_model, colour = "red" , linetype = "dashed")
+pm[col,6] + geom_smooth(model = data_back) + geom_smooth(model = ex_model, colour = "red" , linetype = "dashed")
+pm[col,7] + geom_smooth(model = data_back) + geom_smooth(model = ex_model, colour = "red" , linetype = "dashed")
+
+
+
+#Test performance other than cross validation???
+#plot results???
+#can we make the model better
+  
+```
